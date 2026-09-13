@@ -13,11 +13,10 @@ fn main() -> std::io::Result<()> {
     ratatui::run(|t| run(t, &mut to_launch))?;
 
     if let Some(exec) = to_launch {
-        launch(&exec); // -> !
+        launch(&exec);
     }
     Ok(())
 }
-
 fn load_apps() -> Vec<(String, String)> {
     let locales = get_languages_from_env();
     Iter::new(default_paths())
@@ -36,20 +35,33 @@ fn load_apps() -> Vec<(String, String)> {
         .collect()
 }
 
-fn launch(exec: &str) -> ! {
+fn launch(exec: &str) {
     let parts: Vec<&str> = exec
         .split_whitespace()
         .filter(|p| !p.starts_with('%'))
         .collect();
 
     let Some((&cmd, args)) = parts.split_first() else {
-        std::process::exit(1);
+        return;
     };
 
-    let err = Command::new(cmd).args(args).exec();
+    let mut command = Command::new(cmd);
+    command
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
 
-    eprintln!("exec {cmd}: {err}");
-    std::process::exit(127);
+    unsafe {
+        command.pre_exec(|| {
+            libc::setsid();
+            Ok(())
+        });
+    }
+
+    if let Err(e) = command.spawn() {
+        let _ = std::fs::write("/tmp/launch.err", format!("{cmd}: {e}\n"));
+    }
 }
 
 fn run(terminal: &mut DefaultTerminal, to_launch: &mut Option<String>) -> std::io::Result<()> {
