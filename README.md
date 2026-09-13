@@ -1,19 +1,19 @@
 # lanch
 
-Минималистичный TUI-лаунчер приложений для Linux. Читает `.desktop`-файлы через XDG-пути, показывает список с живым поиском, по Enter запускает выбранное приложение.
+A minimal TUI application launcher for Linux. It reads `.desktop` files from standard XDG paths, shows a searchable list, and launches the selected app on Enter.
 
-Написан на Rust с использованием [ratatui](https://github.com/ratatui/ratatui) и [freedesktop-desktop-entry](https://crates.io/crates/freedesktop-desktop-entry).
+Built with [ratatui](https://github.com/ratatui/ratatui) and [freedesktop-desktop-entry](https://crates.io/crates/freedesktop-desktop-entry).
 
-## Возможности
+## Features
 
-- Список всех видимых приложений из стандартных XDG-каталогов
-- Локализация имён через `get_languages_from_env`
-- Живой поиск по подстроке (регистронезависимый)
-- Навигация стрелками ↑/↓, циклическая
-- Запуск через `exec()` — без форков и лишних процессов
-- Отбрасывание field-кодов (`%u`, `%U`, `%f`, `%F`, `%i`, `%c`, …) из поля `Exec`
+- Lists all visible applications from standard XDG directories
+- Localized names via `get_languages_from_env`
+- Live substring search (case-insensitive)
+- Arrow key navigation, wrapping around at the ends
+- Launches via `exec()` — no forks, no extra processes
+- Strips field codes (`%u`, `%U`, `%f`, `%F`, `%i`, `%c`, …) from the `Exec` field
 
-## Установка
+## Installation
 
 ```sh
 cargo build --release
