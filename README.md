@@ -12,9 +12,12 @@ Built with [ratatui](https://github.com/ratatui/ratatui) and [freedesktop-deskto
 - Arrow key navigation, wrapping around at the ends
 - Launches via `exec()` — no forks, no extra processes
 - Strips field codes (`%u`, `%U`, `%f`, `%F`, `%i`, `%c`, …) from the `Exec` field
-
+## Possible ussage
+- for example : kitty -e lanch
 ## Installation
 
 ```sh
 cargo build --release
 install -m 755 /target/release/lanch ~/.local/bin/lanch
+
+
