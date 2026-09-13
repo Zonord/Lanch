@@ -2,7 +2,7 @@
 name = "lanch"
 version = "0.1.0"
 description = "tui launcher"
-authors = ["Wiss <97359397+Zonord@users.noreply.github.com>"]
+authors = ["zonord"]
 license = "GPL-3.0-only"
 edition = "2024"
 
