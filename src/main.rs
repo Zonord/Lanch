@@ -1,26 +1,23 @@
 use crossterm::event::{self, KeyCode};
+use freedesktop_desktop_entry::{Iter, default_paths, get_languages_from_env};
 use ratatui::{
+    DefaultTerminal,
     layout::{Constraint, Layout},
     widgets::{Block, List, ListState, Paragraph},
-    DefaultTerminal,
 };
-use freedesktop_desktop_entry::{default_paths, get_languages_from_env, Iter};
+use std::os::unix::process::CommandExt; // для .exec()
 use std::process::{Command, Stdio};
 
 fn main() -> std::io::Result<()> {
-    // Сюда `run` положит команду, если пользователь нажал Enter.
     let mut to_launch: Option<String> = None;
-
     ratatui::run(|t| run(t, &mut to_launch))?;
 
-    // ratatui::run уже восстановил терминал — можно спокойно запускать.
     if let Some(exec) = to_launch {
-        launch(&exec);
+        launch(&exec); // -> !
     }
     Ok(())
 }
 
-/// Возвращаем (имя_для_списка, exec_строка)
 fn load_apps() -> Vec<(String, String)> {
     let locales = get_languages_from_env();
     Iter::new(default_paths())
@@ -39,26 +36,23 @@ fn load_apps() -> Vec<(String, String)> {
         .collect()
 }
 
-/// Exec = "firefox %u"  →  запустить `setsid firefox`
-fn launch(exec: &str) {
-    // Field-коды (%u, %U, %f, %F, %i, %c, ...) отбрасываем.
-    let mut parts = exec.split_whitespace().filter(|p| !p.starts_with('%'));
-    let Some(cmd) = parts.next() else { return };
+fn launch(exec: &str) -> ! {
+    let parts: Vec<&str> = exec
+        .split_whitespace()
+        .filter(|p| !p.starts_with('%'))
+        .collect();
 
-    // setsid отвязывает от нашего терминала, null-stdio — чтобы не держал tty.
-    let _ = Command::new("setsid")
-        .arg(cmd)
-        .args(parts)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn();
+    let Some((&cmd, args)) = parts.split_first() else {
+        std::process::exit(1);
+    };
+
+    let err = Command::new(cmd).args(args).exec();
+
+    eprintln!("exec {cmd}: {err}");
+    std::process::exit(127);
 }
 
-fn run(
-    terminal: &mut DefaultTerminal,
-    to_launch: &mut Option<String>,
-) -> std::io::Result<()> {
+fn run(terminal: &mut DefaultTerminal, to_launch: &mut Option<String>) -> std::io::Result<()> {
     let apps = load_apps();
     let mut input = String::new();
     let mut selected = 0usize;
@@ -95,12 +89,18 @@ fn run(
 
         if let event::Event::Key(k) = event::read()? {
             match k.code {
-                KeyCode::Char(c) => { input.push(c); selected = 0; }
-                KeyCode::Backspace => { input.pop(); selected = 0; }
-                KeyCode::Down if !filtered.is_empty() =>
-                    selected = (selected + 1) % filtered.len(),
-                KeyCode::Up if !filtered.is_empty() =>
-                    selected = (selected + filtered.len() - 1) % filtered.len(),
+                KeyCode::Char(c) => {
+                    input.push(c);
+                    selected = 0;
+                }
+                KeyCode::Backspace => {
+                    input.pop();
+                    selected = 0;
+                }
+                KeyCode::Down if !filtered.is_empty() => selected = (selected + 1) % filtered.len(),
+                KeyCode::Up if !filtered.is_empty() => {
+                    selected = (selected + filtered.len() - 1) % filtered.len()
+                }
                 KeyCode::Enter if !filtered.is_empty() => {
                     *to_launch = Some(filtered[selected].1.clone());
                     break;

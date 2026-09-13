@@ -693,6 +693,7 @@ dependencies = [
  "color-eyre",
  "crossterm",
  "freedesktop-desktop-entry",
+ "libc",
  "ratatui",
 ]
 
