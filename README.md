@@ -17,3 +17,4 @@ Built with [ratatui](https://github.com/ratatui/ratatui) and [freedesktop-deskto
 
 ```sh
 cargo build --release
+install -m 755 /target/release/lanch ~/.local/bin/lanch
