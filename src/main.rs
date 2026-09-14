@@ -84,7 +84,10 @@ fn run(terminal: &mut DefaultTerminal, to_launch: &mut Option<String>) -> std::i
             let [top, bottom] =
                 Layout::vertical([Constraint::Length(3), Constraint::Min(0)]).areas(f.area());
 
-            f.render_widget(Paragraph::new(input.as_str()).block(Block::bordered()), top);
+            f.render_widget(
+                Paragraph::new(input.as_str()).block(Block::bordered().title("Search")),
+                top,
+            );
 
             let mut state = ListState::default();
             if !filtered.is_empty() {
@@ -93,7 +96,7 @@ fn run(terminal: &mut DefaultTerminal, to_launch: &mut Option<String>) -> std::i
             f.render_stateful_widget(
                 List::new(filtered.iter().map(|(name, _)| name.as_str()))
                     .block(Block::bordered().title("Applications"))
-                    .highlight_symbol("> "),
+                    .highlight_symbol("-> "),
                 bottom,
                 &mut state,
             );
