@@ -1,5 +1,6 @@
 use crossterm::event::{self, KeyCode};
 use freedesktop_desktop_entry::{Iter, default_paths, get_languages_from_env};
+use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Layout},
@@ -85,7 +86,9 @@ fn run(terminal: &mut DefaultTerminal, to_launch: &mut Option<String>) -> std::i
                 Layout::vertical([Constraint::Length(3), Constraint::Min(0)]).areas(f.area());
 
             f.render_widget(
-                Paragraph::new(input.as_str()).block(Block::bordered().title("Search")),
+                Paragraph::new(input.as_str())
+                    .block(Block::bordered().title("Search"))
+                    .style(Color::Cyan),
                 top,
             );
 
@@ -95,6 +98,7 @@ fn run(terminal: &mut DefaultTerminal, to_launch: &mut Option<String>) -> std::i
             }
             f.render_stateful_widget(
                 List::new(filtered.iter().map(|(name, _)| name.as_str()))
+                    .style(Color::Cyan)
                     .block(Block::bordered().title("Applications"))
                     .highlight_symbol("-> "),
                 bottom,
