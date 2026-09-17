@@ -72,10 +72,26 @@ fn run(terminal: &mut DefaultTerminal, to_launch: &mut Option<String>) -> std::i
 
     loop {
         let needle = input.to_lowercase();
-        let filtered: Vec<&(String, String)> = apps
-            .iter()
-            .filter(|(name, _)| name.to_lowercase().contains(&needle))
-            .collect();
+        let mut filtered: Vec<&(String, String)> = if needle.is_empty() {
+            apps.iter().collect()
+        } else {
+            apps.iter()
+                .filter(|(name, _)| {
+                    let name_lower = name.to_lowercase();
+                    name_lower.contains(&needle) || needle.contains(&name_lower)
+                })
+                .collect()
+        };
+
+        if !needle.is_empty() {
+            filtered.sort_by_key(|(name, _)| {
+                let name_lower = name.to_lowercase();
+                let score = needle.chars().filter(|c| name_lower.contains(*c)).count();
+                std::cmp::Reverse(score)
+            });
+        } else {
+            filtered.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+        }
 
         if selected >= filtered.len() {
             selected = filtered.len().saturating_sub(1);
