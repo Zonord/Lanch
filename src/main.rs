@@ -8,9 +8,14 @@ use ratatui::{
 };
 use std::collections::HashMap;
 use std::os::unix::process::CommandExt;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
-type App = (String, String);
+struct App {
+    name: String,
+    exe: String,
+    path: Option<PathBuf>,
+}
 
 const FUZZY_SIMILARITY_THRESHOLD: f64 = 0.3;
 
@@ -36,8 +41,10 @@ fn load_apps() -> Vec<App> {
                 return None;
             }
             let name = entry.name(&locales)?.to_string();
-            let exec = entry.exec()?.to_string();
-            Some((name, exec))
+            let exe = entry.exec()?.to_string();
+            let path = Some(PathBuf::from(entry.path()?));
+
+            Some(App { name, exe, path })
         })
         .collect()
 }
@@ -61,7 +68,9 @@ fn launch(exec: &str) {
 
     unsafe {
         command.pre_exec(|| {
-            libc::setsid();
+            if libc::setsid() == -1 {
+                return Err(std::io::Error::last_os_error());
+            }
             Ok(())
         });
     }
@@ -80,8 +89,8 @@ enum MatchTier {
     Exact,
 }
 
-/// Скор совпадения: сначала сравнивается MatchTier, при равенстве — i64
-/// (чем больше, тем релевантнее). `None` — приложение не подходит.
+/// Match score: MatchTier is compared first, then i64 when equal
+/// (the larger the value, the more relevant). `None` means the application is not a match.
 fn match_score(name_lower: &str, needle: &str) -> Option<(MatchTier, i64)> {
     if needle.is_empty() || name_lower == needle {
         return Some((MatchTier::Exact, 0));
@@ -176,27 +185,27 @@ fn fuzzy_subsequence_score(needle: &str, haystack: &str) -> Option<i64> {
     Some(final_state.score - (h.len() as i64 - n_len as i64).min(50))
 }
 
-/// Фильтрует и сортирует приложения по релевантности запросу.
-/// Пустой запрос — алфавитный порядок без пересчёта скора.
+/// Filters and sorts applications by relevance to the query.
+/// An empty query uses alphabetical order without recalculating the score.
 fn filter_and_sort_apps<'a>(apps: &'a [App], input: &str) -> Vec<&'a App> {
     let needle = input.to_lowercase();
 
     if needle.is_empty() {
         let mut all: Vec<&App> = apps.iter().collect();
-        all.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+        all.sort_by(|a, b| a.name.to_lowercase().cmp(&&b.name.to_lowercase()));
         return all;
     }
 
     let mut scored: Vec<(&App, (MatchTier, i64))> = apps
         .iter()
-        .filter_map(|entry| match_score(&entry.0.to_lowercase(), &needle).map(|s| (entry, s)))
+        .filter_map(|entry| match_score(&entry.name.to_lowercase(), &needle).map(|s| (entry, s)))
         .collect();
 
     scored.sort_by(|(name_a, score_a), (name_b, score_b)| {
         score_b
             .cmp(score_a)
-            .then_with(|| name_a.0.len().cmp(&name_b.0.len()))
-            .then_with(|| name_a.0.cmp(&name_b.0))
+            .then_with(|| name_a.name.len().cmp(&name_b.name.len()))
+            .then_with(|| name_a.name.cmp(&name_b.name))
     });
 
     scored.into_iter().map(|(entry, _)| entry).collect()
@@ -223,8 +232,9 @@ fn draw_ui(
         if !filtered.is_empty() {
             state.select(Some(selected));
         }
+
         f.render_stateful_widget(
-            List::new(filtered.iter().map(|(name, _)| name.as_str()))
+            List::new(filtered.iter().map(|app| app.name.as_str()))
                 .style(Color::Cyan)
                 .block(Block::bordered().title("Applications"))
                 .highlight_symbol("-> "),
@@ -261,7 +271,7 @@ fn handle_key(
             *selected = (*selected + filtered.len() - 1) % filtered.len();
         }
         KeyCode::Enter if !filtered.is_empty() => {
-            return Action::Launch(filtered[*selected].1.clone());
+            return Action::Launch(filtered[*selected].exe.clone());
         }
         KeyCode::Esc => return Action::Quit,
         _ => {}
