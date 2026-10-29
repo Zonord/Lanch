@@ -11,7 +11,7 @@ A minimal TUI (Terminal User Interface) application launcher for Linux. It reads
 
 ## Developer Commands
 - **Build Release**: `cargo build --release`
-- **Install**: `install -m 755 target/release/lanch ~/.local/bin/lanch`
+- **Install**: `sudo install -m 755 target/release/lanch /usr/local/bin/lanch`
 
 ## Key Implementation Details & Quirks
 - **Process Detachment**: When launching an application, `libc::setsid()` is called in `pre_exec` to ensure the child process is a session leader and survives the TUI's termination.
