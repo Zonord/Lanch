@@ -102,33 +102,40 @@ fn match_score(name_lower: &str, needle: &str) -> Option<(MatchTier, i64)> {
         return Some((MatchTier::Subsequence, score));
     }
 
-    let similarity = char_multiset_similarity(needle, name_lower);
-    (similarity > FUZZY_SIMILARITY_THRESHOLD)
-        .then(|| (MatchTier::Fuzzy, (similarity * 1000.0) as i64))
-}
-
-fn char_freq(s: &str) -> HashMap<char, i32> {
-    s.chars().fold(HashMap::new(), |mut acc, c| {
-        *acc.entry(c).or_insert(0) += 1;
-        acc
-    })
-}
-
-fn char_multiset_similarity(a: &str, b: &str) -> f64 {
-    let freq_a = char_freq(a);
-    let freq_b = char_freq(b);
-
-    let common: i32 = freq_a
-        .iter()
-        .map(|(c, &count_a)| freq_b.get(c).map_or(0, |&count_b| count_a.min(count_b)))
-        .sum();
-
-    let total = a.chars().count() + b.chars().count();
-    if total == 0 {
-        0.0
-    } else {
-        2.0 * common as f64 / total as f64
+    let dist = levenshtein_distance(needle, name_lower);
+    let max_len = needle.len().max(name_lower.len());
+    if max_len > 0 {
+        let similarity = 1.0 - (dist as f64 / max_len as f64);
+        if similarity > FUZZY_SIMILARITY_THRESHOLD {
+            return Some((MatchTier::Fuzzy, (similarity * 1000.0) as i64));
+        }
     }
+    None
+}
+
+fn levenshtein_distance(a: &str, b: &str) -> usize {
+    let a = a.chars().collect::<Vec<char>>();
+    let b = b.chars().collect::<Vec<char>>();
+    let na = a.len();
+    let nb = b.len();
+    if na == 0 { return nb; }
+    if nb == 0 { return na; }
+
+    let mut dp = vec![0; nb + 1];
+    for j in 0..=nb { dp[j] = j; }
+
+    for i in 1..=na {
+        let mut prev_diag = dp[0];
+        dp[0] = i;
+        for j in 1..=nb {
+            let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
+            let next_diag = dp[j];
+            dp[j] = (dp[j] + 1)
+                .min((dp[j - 1] + 1).min(prev_diag + cost));
+            prev_diag = next_diag;
+        }
+    }
+    dp[nb]
 }
 
 struct FuzzyState {
